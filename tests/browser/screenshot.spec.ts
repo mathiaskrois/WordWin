@@ -3,7 +3,7 @@ import { bonusesFor, DA_VALUES } from "../../src/model";
 test("imports generated screenshot letters, point values and both bonus layouts", async ({
   page,
 }) => {
-  await page.goto("/WordWin/");
+  await page.goto("/wordwin/");
   for (const layout of ["classic", "alternate"] as const) {
     const png = await page.evaluate(
       ({ bonuses, values, layout }) => {

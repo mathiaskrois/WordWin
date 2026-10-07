@@ -1,19 +1,16 @@
 WordWin third-party notices
 
-English word data: SCOWL/Aspell via dictionary-en-gb.
-https://github.com/wooorm/dictionaries/tree/main/dictionaries/en-GB
-Full upstream notices: dictionaries/en-license.txt
-
-Danish word data: Stavekontrolden via dictionary-da.
-Copyright 2023 Foreningen for frit tilgaengelige sprogvaerktoejer.
-Distributed under the MPL-1.1 option of its GPL-2.0/LGPL-2.1/MPL-1.1 tri-license.
-https://www.stavekontrolden.dk
-https://www.mozilla.org/en-US/MPL/1.1/
-Full upstream notice: dictionaries/da-license.txt
-Original sources: dictionaries/da-source.dic and dictionaries/da-source.aff
-Modification: Hunspell standalone forms expanded, lowercase alphabetic words of
-2-15 letters selected, then normalized to uppercase and deduplicated. The build
-script making this transformation is available in the WordWin source repository.
+Danish word data: Dansk Sprognaevn, Det Centrale Ordregister (COR1) 1.5.1.0,
+corresponding to Retskrivningsordbogen 5.1. Source (unmodified):
+https://ordregister.dk/files/cor1.5.1.0.tsv
+Local copy: dictionaries/cor1.5.1.0.tsv
+COR is freely available for all purposes:
+https://dsn.dk/forskning/sprogteknologi-og-fagsprog/cor/
+Transformation: retain exact column-5 forms marked N in column 6, filter
+2-15 alphabetic tile letters, normalize NFC/uppercase and deduplicate.
+Exclude K, U, punctuation, multiword expressions, and COR2 extensions.
+Generated whitelist: dictionaries/ro-5.1.txt
+Version/checksum/count: dictionaries/ro-metadata.json
 
 React and React DOM: Copyright Meta Platforms, Inc. and affiliates. MIT.
 Full licenses: licenses/react.txt and licenses/react-dom.txt

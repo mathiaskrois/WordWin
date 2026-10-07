@@ -12,7 +12,7 @@ export default defineConfig({
   },
   webServer: {
     command: "npm run preview",
-    url: "http://127.0.0.1:4173/WordWin/",
+    url: "http://127.0.0.1:4173/wordwin/",
     reuseExistingServer: !process.env.CI,
   },
   projects: [

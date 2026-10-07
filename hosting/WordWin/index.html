@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WordWin has moved</title>
+<link rel="canonical" href="https://krois.dk/wordwin/">
+<p><a href="/wordwin/">Open WordWin</a></p>
+<script>
+(async () => {
+  if ('serviceWorker' in navigator) {
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    for (const registration of registrations)
+      if (new URL(registration.scope).pathname === '/WordWin/') await registration.unregister();
+  }
+})().catch(() => {}).finally(() => location.replace('/wordwin/' + location.search + location.hash));
+</script>
+</html>

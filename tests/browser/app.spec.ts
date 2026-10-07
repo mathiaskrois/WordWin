@@ -7,7 +7,7 @@ test("review gate, solving, preview, persistent position and no mobile overflow"
 }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto("/WordWin/");
+  await page.goto("/wordwin/");
   await expect(
     page.getByRole("heading", { name: "Make every letter count." }),
   ).toBeVisible();
@@ -35,10 +35,10 @@ test("review gate, solving, preview, persistent position and no mobile overflow"
   await expect(solve).toBeDisabled();
   expect(errors).toEqual([]);
 });
-test("square correction, blank values, settings and imported dictionaries", async ({
+test("square correction, blank values, settings and fixed official dictionary", async ({
   page,
 }) => {
-  await page.goto("/WordWin/");
+  await page.goto("/wordwin/");
   await page
     .getByRole("button", { name: "Row 8 column H:", exact: false })
     .click();
@@ -50,23 +50,11 @@ test("square correction, blank values, settings and imported dictionaries", asyn
   ).toBeVisible();
   await page.getByRole("button", { name: "Clear position" }).click();
   await page.getByRole("button", { name: "Settings" }).click();
-  await page
-    .getByLabel("Import English dictionary")
-    .setInputFiles({
-      name: "en.txt",
-      mimeType: "text/plain",
-      buffer: Buffer.from("AT\nCAT\nCATS\n"),
-    });
-  await page
-    .getByLabel("Import Danish dictionary")
-    .setInputFiles({
-      name: "da.txt",
-      mimeType: "text/plain",
-      buffer: Buffer.from("ÆG\nØL\nÅL\n"),
-    });
-  await expect(page.getByText("3 imported words")).toHaveCount(2);
+  await expect(page.getByRole("heading", { name: "Retskrivningsordbogen 5.1" })).toBeVisible();
+  await expect(page.getByLabel("Import English dictionary")).toHaveCount(0);
+  await expect(page.getByLabel("Import Danish dictionary")).toHaveCount(0);
   await page.getByRole("button", { name: "Close dialog" }).click();
-  await page.getByRole("button", { name: "Combined", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Combined", exact: true })).toHaveCount(0);
   await page.getByLabel("Rack letters", { exact: true }).fill("ÆG");
   await page
     .getByRole("checkbox", {
@@ -102,7 +90,7 @@ test("offline reload and solving after origin server stops, with scoped service 
     try {
       const url = new URL(req.url!, "http://localhost");
       const relative =
-        decodeURIComponent(url.pathname).replace(/^\/WordWin\//, "") ||
+        decodeURIComponent(url.pathname).replace(/^\/wordwin\//, "") ||
         "index.html";
       const path = resolve(root, relative);
       if (!path.startsWith(root + sep)) {
@@ -123,12 +111,11 @@ test("offline reload and solving after origin server stops, with scoped service 
   const address = server.address() as { port: number };
   const origin = `http://127.0.0.1:${address.port}`;
   try {
-    await page.goto(origin + "/WordWin/");
+    await page.goto(origin + "/wordwin/");
     await page.evaluate(async () => {
       await navigator.serviceWorker.ready;
     });
-    await page.getByRole("button", { name: "English", exact: true }).click();
-    await page.getByLabel("Rack letters", { exact: true }).fill("CAT");
+    await page.getByLabel("Rack letters", { exact: true }).fill("HEST");
     await page
       .getByRole("checkbox", {
         name: "I checked the board, rack, values, and blanks.",
@@ -140,14 +127,14 @@ test("offline reload and solving after origin server stops, with scoped service 
       await page.evaluate(
         async () => (await navigator.serviceWorker.getRegistration())?.scope,
       ),
-    ).toBe(origin + "/WordWin/");
+    ).toBe(origin + "/wordwin/");
     await new Promise<void>((r) => {
       server.close(() => r());
       server.closeAllConnections();
     });
     await page.reload();
     await expect(page.getByLabel("Rack letters", { exact: true })).toHaveValue(
-      "CAT",
+      "HEST",
     );
     await page
       .getByRole("checkbox", {

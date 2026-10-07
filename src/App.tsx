@@ -5,31 +5,23 @@ import {
   EN_VALUES,
   bonusesFor,
   emptyBoard,
-  normalizeWords,
   rackFromText,
   tile,
   type Bonus,
-  type Language,
   type Move,
   type Position,
 } from "./model";
 import { detectBoard, type Crop } from "./vision";
 import { imageCanvas, recognize } from "./recognition";
-import { load, readCustom, saveCustom, STORE } from "./storage";
-const names = { en: "English", da: "Danish", both: "Combined" };
+import { load, STORE } from "./storage";
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
 }
 export default function App() {
   const saved = useRef(load()).current;
   const [position, setPosition] = useState<Position>(saved.position),
-    [language, setLanguage] = useState<Language>(saved.language),
     [layout, setLayout] = useState(saved.layout),
     [profile, setProfile] = useState(saved.profile);
-  const [custom, setCustom] = useState<Partial<Record<"en" | "da", string>>>(
-      {},
-    ),
-    [storageReady, setStorageReady] = useState(false);
   const [message, setMessage] = useState(""),
     [error, setError] = useState(""),
     [busy, setBusy] = useState<"import" | "solve" | null>(null),
@@ -60,14 +52,6 @@ export default function App() {
     dialog = useRef<HTMLDialogElement>(null),
     upload = useRef<HTMLInputElement>(null);
   useEffect(() => {
-    readCustom()
-      .then(setCustom)
-      .catch(() =>
-        setError(
-          "Private word-list storage is unavailable in this browser. Built-in lists still work.",
-        ),
-      )
-      .finally(() => setStorageReady(true));
     if ("serviceWorker" in navigator)
       navigator.serviceWorker
         .register(`${import.meta.env.BASE_URL}sw.js`, {
@@ -83,12 +67,12 @@ export default function App() {
     try {
       localStorage.setItem(
         STORE,
-        JSON.stringify({ position, language, layout, profile }),
+        JSON.stringify({ position, layout, profile }),
       );
     } catch {
       /* Solving remains available when storage is full. */
     }
-  }, [position, language, layout, profile]);
+  }, [position, layout, profile]);
   useEffect(() => {
     if (modal || edit) dialog.current?.showModal();
     else dialog.current?.close();
@@ -298,44 +282,23 @@ export default function App() {
       if (id === job.current) {
         setBusy(null);
         setError(
-          "The solver stopped unexpectedly. Try again, or use a smaller imported word list.",
+          "The solver stopped unexpectedly. Reload the app and try again.",
         );
         w.terminate();
       }
     };
-    w.postMessage({ position, language, custom });
-  }
-  async function importDictionary(lang: "en" | "da", file?: File) {
-    if (!file) return;
-    try {
-      if (file.size > 25_000_000)
-        throw new Error("Word lists must be under 25 MB.");
-      const words = normalizeWords(await file.text());
-      if (!words.length)
-        throw new Error(
-          "No valid words found. Use UTF-8 text with one word per line.",
-        );
-      const text = words.join("\n");
-      await saveCustom(lang, text);
-      setCustom((c) => ({ ...c, [lang]: text }));
-      invalidate();
-      setMessage(
-        `Imported ${words.length.toLocaleString()} ${names[lang]} words. Stored only on this device.`,
-      );
-    } catch (e) {
-      setError(errorMessage(e));
-    }
+    w.postMessage({ position });
   }
   async function downloadOffline() {
     setDownloading(true);
-    setOffline("Downloading word lists and recognition files…");
+    setOffline("Downloading the dictionary and recognition files…");
     try {
       const response = await fetch(
         `${import.meta.env.BASE_URL}asset-manifest.json`,
       );
       if (!response.ok) throw new Error("Asset list unavailable.");
       const assets: string[] = await response.json();
-      const cache = await caches.open("wordwin-data-v1");
+      const cache = await caches.open("wordwin-data-ro-5.1-v1");
       for (let i = 0; i < assets.length; i++) {
         await cache.add(`${import.meta.env.BASE_URL}${assets[i]}`);
         setOffline(`Saving offline files ${i + 1} of ${assets.length}…`);
@@ -557,35 +520,9 @@ export default function App() {
                   Settings <span aria-hidden="true">↗</span>
                 </button>
               </div>
-              <label className="field-label" htmlFor="language">
-                Word language
-              </label>
-              <div className="language-options" id="language">
-                {(["da", "en", "both"] as const).map((l) => (
-                  <button
-                    key={l}
-                    disabled={!!busy}
-                    aria-pressed={language === l}
-                    onClick={() => {
-                      setLanguage(l);
-                      invalidate();
-                    }}
-                  >
-                    {names[l]}
-                  </button>
-                ))}
-              </div>
+              <p className="field-label">Retskrivningsordbogen 5.1</p>
               <p className="dictionary-note">
-                {language === "both"
-                  ? "Words from either language, including crossing words."
-                  : `${names[language]} main words and crossing words.`}{" "}
-                {(["en", "da"] as const).some(
-                  (l) =>
-                    (language === l || language === "both") &&
-                    custom[l] !== undefined,
-                )
-                  ? "Using your imported lists where available."
-                  : "Built-in word lists may differ from your game."}
+                Only approved Danish forms, including every crossing word.
               </p>
               <label className="review">
                 <input
@@ -607,7 +544,6 @@ export default function App() {
                   !reviewed ||
                   !position.rack.length ||
                   !!busy ||
-                  !storageReady ||
                   unknown
                 }
                 onClick={findMoves}
@@ -659,8 +595,8 @@ export default function App() {
               ) : !moves.length ? (
                 <div className="empty-results">
                   <p>
-                    No legal moves found with these letters and word lists.
-                    Check the position or try a different dictionary.
+                    No legal moves found with these letters and Retskrivningsordbogen.
+                    Check the position. Every formed word must be in Retskrivningsordbogen.
                   </p>
                 </div>
               ) : (
@@ -700,7 +636,7 @@ export default function App() {
                         <div key={i}>
                           <span>
                             {w.word}{" "}
-                            <small>{names[w.language ?? language]}</small>
+                            <small>RO 5.1</small>
                           </span>
                           <strong>{w.points}</strong>
                         </div>
@@ -938,80 +874,15 @@ export default function App() {
                   ))}
                 </div>
               </details>
-              <h3>Your game's dictionaries</h3>
+              <h3>Retskrivningsordbogen 5.1</h3>
               <p className="dialog-description">
-                Import UTF-8 text, one word per line. Each import replaces that
-                language’s built-in list on this device. Combined mode uses both
-                lists.
-              </p>
-              {(["da", "en"] as const).map((l) => (
-                <div className="dictionary-control" key={l}>
-                  <strong>{names[l]}</strong>
-                  <span className="tiny">
-                    {custom[l] === undefined
-                      ? "Built-in"
-                      : `${normalizeWords(custom[l]!).length.toLocaleString()} imported words`}
-                  </span>
-                  <label className="file-button">
-                    Import .txt
-                    <input
-                      type="file"
-                      accept=".txt,text/plain"
-                      aria-label={`Import ${names[l]} dictionary`}
-                      hidden
-                      onChange={(e) => {
-                        void importDictionary(l, e.target.files?.[0]);
-                        e.target.value = "";
-                      }}
-                    />
-                  </label>
-                  {custom[l] !== undefined && (
-                    <button
-                      className="text-button"
-                      onClick={async () => {
-                        try {
-                          await saveCustom(l);
-                          setCustom((c) => {
-                            const next = { ...c };
-                            delete next[l];
-                            return next;
-                          });
-                          invalidate();
-                        } catch (e) {
-                          setError(errorMessage(e));
-                        }
-                      }}
-                    >
-                      Use built-in
-                    </button>
-                  )}
-                </div>
-              ))}
-              <p className="tiny">
-                Built-in English: SCOWL/Aspell. Danish: Stavekontrolden.
-                Spelling lists may contain words your game rejects or miss words
-                it accepts. Import its exact lists for matching recommendations.
+                Main words and crossing words use the official COR1 1.5.1.0
+                register from Dansk Sprognævn. Only forms marked normeret (N)
+                are accepted. No additional inflections or compounds are generated.
               </p>
               <p className="license-links">
-                <a
-                  href={`${import.meta.env.BASE_URL}dictionaries/en-license.txt`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  English license
-                </a>
-                <a
-                  href={`${import.meta.env.BASE_URL}dictionaries/da-license.txt`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Danish license
-                </a>
-                <a
-                  href={`${import.meta.env.BASE_URL}dictionaries/da-source.dic`}
-                >
-                  Danish source
-                </a>
+                <a href="https://ordregister.dk/" target="_blank" rel="noreferrer">Official source</a>
+                <a href={`${import.meta.env.BASE_URL}dictionaries/ro-metadata.json`} target="_blank" rel="noreferrer">Dictionary version</a>
               </p>
             </>
           )}
@@ -1091,7 +962,7 @@ export default function App() {
           {modal === "help" && (
             <>
               <p className="dialog-description">
-                Open <strong>krois.dk/WordWin/</strong> in Safari, tap{" "}
+                Open <strong>krois.dk/wordwin/</strong> in Safari, tap{" "}
                 <strong>Share</strong>, then <strong>Add to Home Screen</strong>
                 . WordWin will open like an app.
               </p>
@@ -1105,7 +976,7 @@ export default function App() {
                   blank. Tap a square to correct it; use Adjust crop if needed.
                 </li>
                 <li>
-                  Choose English, Danish, or Combined, check the review box, and
+                  Check the review box and
                   find your moves.
                 </li>
                 <li>
@@ -1115,8 +986,8 @@ export default function App() {
               </ol>
               <h3>Take it offline</h3>
               <p className="dialog-description">
-                Download the word lists and recognition files once. Imported
-                dictionaries and your latest position are stored on this device.
+                Download the dictionary and recognition files once. Your latest
+                position is stored on this device.
               </p>
               <button
                 className="solve-button"
@@ -1131,7 +1002,7 @@ export default function App() {
               <h3>What “best” means</h3>
               <p className="dialog-description">
                 The highest score among legal placements for your reviewed
-                position, scoring settings, and selected word lists. Search
+                position, scoring settings, and Retskrivningsordbogen 5.1. Search
                 completes before results appear. It does not predict your
                 opponent’s next move.
               </p>

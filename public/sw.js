@@ -1,7 +1,7 @@
-/* Scope is deliberately limited to /WordWin/. The build stamps this version. */
+/* Scope is deliberately limited to /wordwin/. The build stamps this version. */
 const SHELL = "wordwin-shell-__BUILD__";
-const DATA = "wordwin-data-v1";
-const BASE = "/WordWin/";
+const DATA = "wordwin-data-ro-5.1-v1";
+const BASE = "/wordwin/";
 self.addEventListener("install", (event) => {
   event.waitUntil(
     (async () => {
@@ -20,7 +20,7 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
       for (const key of await caches.keys())
-        if (key.startsWith("wordwin-shell-") && key !== SHELL)
+        if ((key.startsWith("wordwin-shell-") && key !== SHELL) || key === "wordwin-data-v1")
           await caches.delete(key);
       await self.clients.claim();
     })(),
@@ -51,7 +51,8 @@ self.addEventListener("fetch", (event) => {
           );
         }
       }
-      const cached = await cache.match(event.request, { ignoreVary: true });
+      const cached = (await cache.match(event.request, { ignoreVary: true })) ||
+        (isData && await (await caches.open(SHELL)).match(event.request, { ignoreVary: true }));
       if (cached) return cached;
       const response = await fetch(event.request);
       if (response.ok) await cache.put(event.request, response.clone());

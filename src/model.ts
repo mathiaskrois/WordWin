@@ -1,4 +1,3 @@
-export type Language = "en" | "da" | "both";
 export type Bonus = "" | "DL" | "TL" | "DW" | "TW";
 export interface Tile {
   letter: string;
@@ -26,7 +25,6 @@ export interface Placement {
 export interface ScoredWord {
   word: string;
   points: number;
-  language?: Language;
 }
 export interface Move {
   word: string;
