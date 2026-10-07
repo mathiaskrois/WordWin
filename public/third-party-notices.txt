@@ -1,0 +1,32 @@
+WordWin third-party notices
+
+English word data: SCOWL/Aspell via dictionary-en-gb.
+https://github.com/wooorm/dictionaries/tree/main/dictionaries/en-GB
+Full upstream notices: dictionaries/en-license.txt
+
+Danish word data: Stavekontrolden via dictionary-da.
+Copyright 2023 Foreningen for frit tilgaengelige sprogvaerktoejer.
+Distributed under the MPL-1.1 option of its GPL-2.0/LGPL-2.1/MPL-1.1 tri-license.
+https://www.stavekontrolden.dk
+https://www.mozilla.org/en-US/MPL/1.1/
+Full upstream notice: dictionaries/da-license.txt
+Original sources: dictionaries/da-source.dic and dictionaries/da-source.aff
+Modification: Hunspell standalone forms expanded, lowercase alphabetic words of
+2-15 letters selected, then normalized to uppercase and deduplicated. The build
+script making this transformation is available in the WordWin source repository.
+
+React and React DOM: Copyright Meta Platforms, Inc. and affiliates. MIT.
+Full licenses: licenses/react.txt and licenses/react-dom.txt
+
+Tesseract.js and Tesseract.js-core: Apache License 2.0.
+https://github.com/naptha/tesseract.js
+https://github.com/naptha/tesseract.js-core
+Full licenses: licenses/tesseract-js.txt and licenses/tesseract-core.txt
+
+Tesseract fast OCR language data: Apache License 2.0.
+https://github.com/tesseract-ocr/tessdata_fast
+Distributed compressed by https://github.com/naptha/tessdata
+Source commit: 806cd9adc8c6e8abc11c782db1818c990576bebc
+
+Application source and dictionary transformation:
+https://github.com/mathiaskrois/WordWin
