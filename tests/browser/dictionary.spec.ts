@@ -24,7 +24,6 @@ test("legacy overrides cannot bypass RO validation of main and crossing words", 
   }, position);
   await page.reload();
   await expect(page.getByLabel("Rack letters", {exact:true})).toHaveValue("ODFHEST");
-  await page.getByRole("checkbox", {name:"I checked the board, rack, values, and blanks."}).check();
   await page.getByRole("button", {name:"Find best moves"}).click();
   await expect(page.locator(".move").first()).toBeVisible();
   await expect(page.locator(".result-summary")).toContainText(release.count.toLocaleString("en-US"));
@@ -52,7 +51,6 @@ test("rejects altered dictionary data rather than suggesting unverified words", 
     await (await caches.open("wordwin-data-ro-5.1-v1")).put("/wordwin/dictionaries/ro-5.1.txt", new Response("ODF\nZZZ\n"));
   });
   await page.getByLabel("Rack letters", {exact:true}).fill("ODF");
-  await page.getByRole("checkbox", {name:"I checked the board, rack, values, and blanks."}).check();
   await page.getByRole("button", {name:"Find best moves"}).click();
   await expect(page.getByRole("alert")).toContainText("Dictionary verification failed");
   await expect(page.locator(".move")).toHaveCount(0);

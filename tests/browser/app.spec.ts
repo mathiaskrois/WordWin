@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { resolve, sep } from "node:path";
-test("review gate, solving, preview, persistent position and no mobile overflow", async ({
+test("solving, preview, persistent position and no mobile overflow", async ({
   page,
 }) => {
   const errors: string[] = [];
@@ -14,12 +14,7 @@ test("review gate, solving, preview, persistent position and no mobile overflow"
   await expect(page.locator(".square")).toHaveCount(225);
   await page.getByLabel("Rack letters", { exact: true }).fill("ENAGÆFN");
   const solve = page.getByRole("button", { name: "Find best moves" });
-  await expect(solve).toBeDisabled();
-  await page
-    .getByRole("checkbox", {
-      name: "I checked the board, rack, values, and blanks.",
-    })
-    .check();
+  await expect(solve).toBeEnabled();
   await solve.click();
   await expect(page.locator(".move").first()).toBeVisible({ timeout: 90000 });
   await expect(page.locator(".square.proposed")).not.toHaveCount(0);
@@ -32,7 +27,7 @@ test("review gate, solving, preview, persistent position and no mobile overflow"
   await expect(page.getByLabel("Rack letters", { exact: true })).toHaveValue(
     "ENAGÆFN",
   );
-  await expect(solve).toBeDisabled();
+  await expect(solve).toBeEnabled();
   expect(errors).toEqual([]);
 });
 test("square correction, blank values, settings and fixed official dictionary", async ({
@@ -56,11 +51,6 @@ test("square correction, blank values, settings and fixed official dictionary", 
   await page.getByRole("button", { name: "Close dialog" }).click();
   await expect(page.getByRole("button", { name: "Combined", exact: true })).toHaveCount(0);
   await page.getByLabel("Rack letters", { exact: true }).fill("ÆG");
-  await page
-    .getByRole("checkbox", {
-      name: "I checked the board, rack, values, and blanks.",
-    })
-    .check();
   await page.getByRole("button", { name: "Find best moves" }).click();
   await expect(page.locator(".move").first()).toBeVisible();
   expect(
@@ -69,7 +59,7 @@ test("square correction, blank values, settings and fixed official dictionary", 
   await page.getByRole("button", { name: "Board 2", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Find best moves" }),
-  ).toBeDisabled();
+  ).toBeEnabled();
 });
 test("offline reload and solving after origin server stops, with scoped service worker", async ({
   page,
@@ -116,11 +106,6 @@ test("offline reload and solving after origin server stops, with scoped service 
       await navigator.serviceWorker.ready;
     });
     await page.getByLabel("Rack letters", { exact: true }).fill("HEST");
-    await page
-      .getByRole("checkbox", {
-        name: "I checked the board, rack, values, and blanks.",
-      })
-      .check();
     await page.getByRole("button", { name: "Find best moves" }).click();
     await expect(page.locator(".move").first()).toBeVisible();
     expect(
@@ -136,11 +121,6 @@ test("offline reload and solving after origin server stops, with scoped service 
     await expect(page.getByLabel("Rack letters", { exact: true })).toHaveValue(
       "HEST",
     );
-    await page
-      .getByRole("checkbox", {
-        name: "I checked the board, rack, values, and blanks.",
-      })
-      .check();
     await page.getByRole("button", { name: "Find best moves" }).click();
     await expect(page.locator(".move").first()).toBeVisible();
   } finally {

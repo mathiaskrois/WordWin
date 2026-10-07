@@ -24,8 +24,7 @@ export default function App() {
     [profile, setProfile] = useState(saved.profile);
   const [message, setMessage] = useState(""),
     [error, setError] = useState(""),
-    [busy, setBusy] = useState<"import" | "solve" | null>(null),
-    [reviewed, setReviewed] = useState(false);
+    [busy, setBusy] = useState<"import" | "solve" | null>(null);
   const [moves, setMoves] = useState<Move[]>([]),
     [selected, setSelected] = useState(0),
     [solved, setSolved] = useState(false),
@@ -84,7 +83,6 @@ export default function App() {
     [imageUrl],
   );
   function invalidate() {
-    setReviewed(false);
     setMoves([]);
     setSolved(false);
     setSummary("");
@@ -117,24 +115,26 @@ export default function App() {
         manual,
       );
       if (id !== job.current) return;
-      setPosition((p) => ({
-        ...p,
+      const nextPosition: Position = {
+        ...position,
         board: result.board,
         rack: result.rack,
         bonuses: result.bonuses,
-        rules: { ...p.rules, center: result.bonuses[112] },
-      }));
+        rules: { ...position.rules, center: result.bonuses[112] },
+      };
+      setPosition(nextPosition);
       setLayout(result.layout);
       setCrop(result.crop);
       setUncertain(result.uncertain);
       setRackUncertain(result.rackUncertain);
       setMessage(
-        `Read ${result.board.filter(Boolean).length} board tiles and ${result.rack.length} rack tiles. Check the board, letters, values, and blanks before solving.`,
+        `Read ${result.board.filter(Boolean).length} board tiles and ${result.rack.length} rack tiles. Calculating your best moves.`,
       );
       if (!result.rack.length)
         setError(
           "No rack tiles found. Adjust the crop or enter your rack below.",
         );
+      else findMoves(nextPosition);
     } catch (e) {
       if (id === job.current)
         setError(
@@ -236,12 +236,13 @@ export default function App() {
     setEdit(null);
     invalidate();
   }
-  function findMoves() {
-    if (!reviewed || busy) return;
+  function findMoves(nextPosition: Position = position) {
+    if (!nextPosition.rack.length) return;
     const invalid =
-      position.board.some((t) => t && !ALPHABET.includes(t.letter)) ||
-      position.rack.some((t) => !t.blank && !ALPHABET.includes(t.letter));
+      nextPosition.board.some((t) => t && !ALPHABET.includes(t.letter)) ||
+      nextPosition.rack.some((t) => !t.blank && !ALPHABET.includes(t.letter));
     if (invalid) {
+      setBusy(null);
       setError(
         "Correct the tiles marked ? before solving. Rack blanks can remain ?.",
       );
@@ -287,7 +288,7 @@ export default function App() {
         w.terminate();
       }
     };
-    w.postMessage({ position });
+    w.postMessage({ position: nextPosition });
   }
   async function downloadOffline() {
     setDownloading(true);
@@ -524,15 +525,6 @@ export default function App() {
               <p className="dictionary-note">
                 Only approved Danish forms, including every crossing word.
               </p>
-              <label className="review">
-                <input
-                  type="checkbox"
-                  checked={reviewed}
-                  disabled={!!busy}
-                  onChange={(e) => setReviewed(e.target.checked)}
-                />
-                <span>I checked the board, rack, values, and blanks.</span>
-              </label>
               {unknown && (
                 <p className="warning">
                   Correct board tiles marked ? before solving.
@@ -541,12 +533,11 @@ export default function App() {
               <button
                 className="solve-button"
                 disabled={
-                  !reviewed ||
                   !position.rack.length ||
                   !!busy ||
                   unknown
                 }
-                onClick={findMoves}
+                onClick={() => findMoves()}
               >
                 Find best moves <span aria-hidden="true">→</span>
               </button>
@@ -976,8 +967,7 @@ export default function App() {
                   blank. Tap a square to correct it; use Adjust crop if needed.
                 </li>
                 <li>
-                  Check the review box and
-                  find your moves.
+                  Your best moves are calculated automatically after import.
                 </li>
                 <li>
                   Tap a result to see its exact placement and score. Play it

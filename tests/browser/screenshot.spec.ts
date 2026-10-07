@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { bonusesFor, DA_VALUES } from "../../src/model";
-test("imports generated screenshot letters, point values and both bonus layouts", async ({
+test("automatically solves imported screenshots with both bonus layouts", async ({
   page,
 }) => {
   await page.goto("/wordwin/");
@@ -68,7 +68,7 @@ test("imports generated screenshot letters, point values and both bonus layouts"
         mimeType: "image/png",
         buffer: Buffer.from(png, "base64"),
       });
-    await expect(page.getByRole("status")).toContainText("Read ", {
+    await expect(page.getByRole("status")).toContainText("Search complete.", {
       timeout: 90000,
     });
     await expect(page.getByLabel("Rack letters", { exact: true })).toHaveValue(

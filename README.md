@@ -4,7 +4,7 @@ An iPhone-friendly screenshot solver for two 15×15 word-game boards. Runs entir
 
 ## Use on iPhone
 
-Open the site in Safari, choose **Share → Add to Home Screen**. Import a full screenshot containing the board and rack, review letters, tile values, blanks, and bonus squares, then select **Find best moves**. Tap a result to preview its placement. All moves are played manually in your game.
+Open the site in Safari, choose **Share → Add to Home Screen**. Import a full screenshot containing the board and rack. WordWin calculates the best moves automatically. You can edit letters, tile values, blanks, and bonus squares afterward, then select **Find best moves** to recalculate. Tap a result to preview its placement. All moves are played manually in your game.
 
 Tap a board square or rack tile to correct recognition. **Adjust crop** lets you reposition the board and rack. **Settings** contains scoring presets, editable values, center bonuses, and bonus settings. **Help → Download for offline use** saves recognition assets and the official dictionary for offline imports and solving.
 
