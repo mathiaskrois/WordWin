@@ -14,6 +14,7 @@ import {
 import { detectBoard, type Crop } from "./vision";
 import { imageCanvas, recognize } from "./recognition";
 import { load, STORE } from "./storage";
+import { ShortcutImport } from "./ShortcutImport";
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
 }
@@ -50,6 +51,7 @@ export default function App() {
     job = useRef(0),
     dialog = useRef<HTMLDialogElement>(null),
     upload = useRef<HTMLInputElement>(null);
+  const importing = useRef(false);
   useEffect(() => {
     if ("serviceWorker" in navigator)
       navigator.serviceWorker
@@ -145,22 +147,29 @@ export default function App() {
     }
   }
   async function importFile(file?: File) {
-    if (!file) return;
+    if (!file || busy || importing.current) return false;
+    importing.current = true;
     try {
       const source = await imageCanvas(file);
-      setCanvas(source);
-      setImageUrl(URL.createObjectURL(file));
       const found = detectBoard(
         source
           .getContext("2d")!
           .getImageData(0, 0, source.width, source.height),
       );
+      setCanvas(source);
+      setImageUrl(URL.createObjectURL(file));
       setCrop(found.crop);
-      await scan(source);
+      // Acknowledge receipt after decoding; OCR continues independently because
+      // Safari's Run JavaScript on Webpage action has a short time limit.
+      void scan(source);
+      return true;
     } catch (e) {
       setError(
         `Unable to open this image: ${errorMessage(e)}. Use a PNG or JPEG screenshot.`,
       );
+      return false;
+    } finally {
+      importing.current = false;
     }
   }
   function changeLayout(next: "classic" | "alternate") {
@@ -332,6 +341,7 @@ export default function App() {
         </button>
       </header>
       <main>
+        <ShortcutImport onImport={importFile} />
         <section className="intro">
           <div className="eyebrow">
             <span className="live-dot" /> YOUR NEXT MOVE
@@ -974,6 +984,23 @@ export default function App() {
                   manually in your game.
                 </li>
               </ol>
+              <h3>Import and delete with Shortcuts</h3>
+              <p className="dialog-description">
+                In Safari, install the{" "}
+                <a href={`${import.meta.env.BASE_URL}shortcuts/WordWin%20Import%20and%20Delete.shortcut`}>
+                  WordWin Import and Delete shortcut
+                </a>
+                . Open WordWin in Safari, tap Share, then choose the shortcut
+                and select one screenshot. Allow Shortcuts to run JavaScript
+                and access Photos when asked.
+              </p>
+              <p className="dialog-description">
+                After WordWin receives the image, Shortcuts asks to delete the
+                original from Photos. Recognition continues in WordWin. If the
+                handoff fails, the original is kept. This works in Safari,
+                rather than the Home Screen app. Keep WordWin open until your
+                position is read; the image itself is only held in memory.
+              </p>
               <h3>Take it offline</h3>
               <p className="dialog-description">
                 Download the dictionary and recognition files once. Your latest

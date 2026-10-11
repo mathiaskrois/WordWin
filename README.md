@@ -10,6 +10,16 @@ Tap a board square or rack tile to correct recognition. **Adjust crop** lets you
 
 Screenshots are processed on-device, never uploaded, and not persisted. Your latest position is saved in localStorage. Legacy imported dictionaries and language choices are ignored. Clearing browser data removes your saved position.
 
+## Free photo cleanup with Apple Shortcuts
+
+Install **WordWin Import and Delete** from Help, or open `public/shortcuts/WordWin Import and Delete.shortcut` on your iPhone. Open the updated WordWin in **Safari**, tap **Share → WordWin Import and Delete**, and select one screenshot. Grant Photos access and permission to run JavaScript on WordWin. If JavaScript is disabled, enable **Settings → Apps → Shortcuts → Advanced → Allow Running Scripts**.
+
+The shortcut converts the selected photo to PNG and passes its Base64 data directly to the active page. No image is sent to a server or placed in a URL, clipboard, or persistent browser storage. WordWin acknowledges only after decoding the image and retaining it for crop adjustments. OCR and solving continue independently. The shortcut requests deletion of the **original selected Photos asset**, only if it gets the matching receipt. Failed, busy, invalid, or timed-out imports keep the original. Keep the normal Photos deletion confirmation enabled. Deleted photos follow the usual Recently Deleted behavior.
+
+This is a Safari share-sheet workflow, not a Home Screen app or Photos share-sheet workflow. Keep the WordWin tab open until recognition completes: receipt confirms image transfer, not recognition accuracy, and the image is held only in memory. Normal Import screenshot does not delete photos. The shortcut has no development signing expiry and does not require a paid developer account. Its actual Photos permissions and deletion flow still need testing on an iPhone; browser tests cover the handoff and failure receipts only.
+
+To rebuild the signed shortcut on a Mac, run `python3 scripts/create-shortcut.py`. This uses Apple's `shortcuts sign --mode anyone`. The action definitions live in that script; the Safari handoff script is `public/shortcuts/import.js`. For manual setup, create a Safari Web Page share-sheet shortcut with Select Photos (single), Convert Image (PNG), Base64 Encode (no line breaks), and Run JavaScript on Webpage (input: Shortcut Input). Paste `import.js` and replace the **quoted** `WORDWIN_IMAGE_BASE64` placeholder with the Base64 Encoded magic variable. Add an If action: JavaScript Result **is exactly** `WORDWIN_RECEIVED`, then Delete Photos using the **Select Photos** result; otherwise Show Result. Never use converted-image or JavaScript output as the Delete Photos input.
+
 ## Development
 
 Requires Node.js 24 and npm. Use the committed lockfile.

@@ -10,6 +10,8 @@ const paths = [
   "icon-512.png",
   "manifest.webmanifest",
   "asset-manifest.json",
+  "shortcuts/WordWin Import and Delete.shortcut",
+  "shortcuts/import.js",
   "dictionaries/ro-5.1.txt",
   "dictionaries/ro-metadata.json",
   ...assets.map((a) => "assets/" + a),
