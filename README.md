@@ -43,10 +43,10 @@ The official source is [freely available for all purposes](https://dsn.dk/forskn
 
 ## Hosting and releases
 
-WordWin source lives in `mathiaskrois/WordWin`. The existing `mathiaskrois/unbound-site` repository serves `krois.dk`; its Pages workflow builds the pinned WordWin commit and stages `dist/` at `/wordwin/` and the legacy redirect from `hosting/WordWin/` at `/WordWin/`, alongside the existing Unbound pages. WordWin does not take ownership of the domain or install a root-scoped service worker.
+WordWin source lives in `mathiaskrois/WordWin`. The existing `mathiaskrois/krois-site` repository serves `krois.dk`; its Pages workflow builds the pinned WordWin commit and stages `dist/` at `/wordwin/` and the legacy redirect from `hosting/WordWin/` at `/WordWin/`, alongside the existing Unbound pages. WordWin does not take ownership of the domain or install a root-scoped service worker.
 
 1. Push a WordWin commit and wait for **Verify WordWin** to pass.
-2. In `unbound-site`, update `wordwin-release.txt` to that full commit SHA and push. Alternatively, run **Deploy GitHub Pages** manually with `wordwin_ref` set to the full SHA.
+2. In sibling `krois-site`, update only `WordWin.commit` in `releases.json` to that full commit SHA and push. **Deploy GitHub Pages** assembles the three separately pinned website releases.
 3. The hosting workflow checks out that SHA, runs unit tests and the production build, records its SHA in `/wordwin/release.json`, then deploys the combined site.
 4. Check `/wordwin/`, its manifest and recognition assets, and the existing `/unbound/` routes. Revert `wordwin-release.txt` to a previously verified SHA to roll back.
 
@@ -57,3 +57,5 @@ WordWin's own workflow runs unit tests and Chromium/iPhone-WebKit browser tests.
 Application code: MIT. Dictionary source: Dansk Sprognaevn COR1; freely available for all purposes with attribution and original data included. OCR libraries retain their Apache-2.0 notices, and OCR language-data attribution is included in the distribution.
 
 Reference screenshots of the unpublished game are excluded from the repository and deployment. Local validation may use them, but public automated tests use generated input and small synthetic dictionaries.
+
+The local checkout is grouped at `/Users/mathiaskroismoller/Git/krois/WordWin/`. Website source repositories are siblings; the Unbound app stays independently at `/Users/mathiaskroismoller/Git/Unbound/`.
