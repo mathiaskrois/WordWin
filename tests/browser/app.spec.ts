@@ -56,6 +56,8 @@ test("square correction, blank values, settings and fixed official dictionary", 
   expect(
     await page.locator(".move-details strong").allTextContents(),
   ).toContain("ÆG");
+  if (await page.getByRole("button", { name: "Cancel", exact: true }).count())
+    await page.getByRole("button", { name: "Cancel", exact: true }).click();
   await page.getByRole("button", { name: "Board 2", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Find best moves" }),

@@ -1,6 +1,11 @@
 import release from "./ro-release.json";
-import { Lexicon, solve } from "./solver";
+import { Lexicon } from "./solver";
 import { normalizeWords, type Position } from "./model";
+import { analyzeStrategy, initialAnalysis, type Analysis } from "./strategy";
+export type SolverMessage =
+  | { type: "progress"; message: string }
+  | { type: "error"; message: string }
+  | ({ type: "preliminary" | "update" | "result"; count: number } & Analysis);
 let dictionary: Lexicon | undefined;
 let count = 0;
 self.onmessage = async (event: MessageEvent<{ position: Position }>) => {
@@ -28,7 +33,11 @@ self.onmessage = async (event: MessageEvent<{ position: Position }>) => {
       dictionary = new Lexicon(words);
     }
     self.postMessage({ type: "progress", message: "Finding every legal placement..." });
-    self.postMessage({ type: "result", ...solve(event.data.position, dictionary), count });
+    const initial = initialAnalysis(event.data.position, dictionary);
+    self.postMessage({ type: "preliminary", ...initial, count } satisfies SolverMessage);
+    const analysis = await analyzeStrategy(event.data.position, dictionary, initial,
+      update => self.postMessage({ type: "update", ...update, count } satisfies SolverMessage));
+    self.postMessage({ type: "result", ...analysis, count } satisfies SolverMessage);
   } catch (error) {
     self.postMessage({ type: "error", message: error instanceof Error ? error.message : String(error) });
   }

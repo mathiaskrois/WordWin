@@ -193,49 +193,70 @@ export function scoreMove(
     score: words.reduce((s, w) => s + w.points, 0) + bingo,
   };
 }
+interface BoardSearch {
+  anchors: Set<number>;
+  across: Map<number, Set<string> | null>;
+  down: Map<number, Set<string> | null>;
+}
+const boardSearchCache = new WeakMap<Lexicon, Map<string, BoardSearch>>();
+function boardSearch(board: Board, lexicon: Lexicon): BoardSearch {
+  let cache = boardSearchCache.get(lexicon);
+  if (!cache) { cache = new Map(); boardSearchCache.set(lexicon, cache); }
+  // Content key also supports callers editing a board array in place.
+  const key = board.map(t => t?.letter ?? ".").join("");
+  const cached = cache.get(key);
+  if (cached) { cache.delete(key); cache.set(key, cached); return cached; }
+  const anchors = new Set<number>();
+  if (!board.some(Boolean)) anchors.add(112);
+  else for (let i = 0; i < 225; i++)
+    if (!board[i] && [i - 15, i + 15,
+      ...(i % 15 > 0 ? [i - 1] : []), ...(i % 15 < 14 ? [i + 1] : []),
+    ].some(j => j >= 0 && j < 225 && board[j])) anchors.add(i);
+  const result: BoardSearch = { anchors, across: new Map(), down: new Map() };
+  for (const direction of ["across", "down"] as const) {
+    const opposite = direction === "across" ? 15 : 1;
+    for (let i = 0; i < 225; i++) if (!board[i]) {
+      const ghost = board.slice();
+      ghost[i] = { letter: "?", value: 0, blank: true };
+      const l = line(i, opposite, ghost);
+      result[direction].set(i, l.indices.length === 1 ? null : new Set(
+        [...ALPHABET].filter(c => lexicon.has(l.text.replace("?", c))),
+      ));
+    }
+  }
+  cache.set(key, result);
+  if (cache.size > 32) cache.delete(cache.keys().next().value!);
+  return result;
+}
+
 export function solve(
   position: Position,
   lexicon: Lexicon,
   limit = 20,
+  options: {
+    onMove?: (move: Move) => void;
+    evaluate?: (move: Move) => number;
+    deadline?: number;
+  } = {},
 ): { moves: Move[]; examined: number } {
   if (!position.rack.length) return { moves: [], examined: 0 };
-  const empty = !position.board.some(Boolean);
-  const anchors = new Set<number>();
-  if (empty) anchors.add(112);
-  else
-    for (let i = 0; i < 225; i++)
-      if (
-        !position.board[i] &&
-        [
-          i - 15,
-          i + 15,
-          ...(i % 15 > 0 ? [i - 1] : []),
-          ...(i % 15 < 14 ? [i + 1] : []),
-        ].some((j) => j >= 0 && j < 225 && position.board[j])
-      )
-        anchors.add(i);
+  if (options.deadline !== undefined && performance.now() >= options.deadline) throw new SearchDeadline();
+  const search = boardSearch(position.board, lexicon), anchors = search.anchors;
   const results = new Map<string, Move>();
   let examined = 0;
+  let visits = 0;
+  const evaluations = new WeakMap<Move, number>();
+  const rank = (move: Move) => {
+    let value = evaluations.get(move);
+    if (value === undefined) {
+      value = options.evaluate?.(move) ?? move.score;
+      evaluations.set(move, value);
+    }
+    return value;
+  };
   for (const direction of ["across", "down"] as const) {
     const delta = direction === "across" ? 1 : 15;
-    const cross = new Map<number, Set<string> | null>();
-    for (let i = 0; i < 225; i++)
-      if (!position.board[i]) {
-        const opposite = delta === 1 ? 15 : 1;
-        const ghost = position.board.slice();
-        ghost[i] = { letter: "?", value: 0, blank: true };
-        const l = line(i, opposite, ghost);
-        cross.set(
-          i,
-          l.indices.length === 1
-            ? null
-            : new Set(
-                [...ALPHABET].filter((c) =>
-                  lexicon.has(l.text.replace("?", c)),
-                ),
-              ),
-        );
-      }
+    const cross = search[direction];
     for (let fixed = 0; fixed < 15; fixed++)
       for (let start = 0; start < 15; start++) {
         const startIndex =
@@ -245,6 +266,8 @@ export function solve(
         const available = position.rack.map((t) => ({ ...t }));
         const consumed = Array(available.length).fill(false);
         function walk(offset: number, node: number, connected: boolean) {
+          if (++visits % 256 === 0 && options.deadline !== undefined && performance.now() >= options.deadline)
+            throw new SearchDeadline();
           const idx = startIndex + offset * delta;
           if (
             lexicon.terminal[node] &&
@@ -255,6 +278,7 @@ export function solve(
             examined++;
             const move = scoreMove(position, placed, direction, lexicon);
             if (move) {
+              options.onMove?.(move);
               const key = move.placed
                 .slice()
                 .sort((a, b) => a.index - b.index)
@@ -263,7 +287,7 @@ export function solve(
               results.set(key, move);
               if (results.size > limit * 3) {
                 const sorted = [...results.entries()].sort(
-                  (a, b) => b[1].score - a[1].score,
+                  (a, b) => rank(b[1]) - rank(a[1]),
                 );
                 for (const [k] of sorted.slice(limit)) results.delete(k);
               }
@@ -321,7 +345,7 @@ export function solve(
   const moves = [...results.values()]
     .sort(
       (a, b) =>
-        b.score - a.score ||
+        rank(b) - rank(a) ||
         a.word.localeCompare(b.word) ||
         a.row - b.row ||
         a.col - b.col ||
@@ -329,4 +353,8 @@ export function solve(
     )
     .slice(0, limit);
   return { moves, examined };
+}
+
+export class SearchDeadline extends Error {
+  constructor() { super("Analysis deadline reached"); }
 }

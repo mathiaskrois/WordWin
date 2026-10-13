@@ -32,12 +32,12 @@ test("legacy overrides cannot bypass RO validation of main and crossing words", 
   const result = await page.evaluate(({position, workerPath}) => new Promise<any>((resolve,reject) => {
     const worker = new Worker("/wordwin/assets/" + workerPath, {type:"module"});
     worker.onerror = e => {worker.terminate(); reject(e.message);};
-    worker.onmessage = ({data}) => { if (data.type !== "progress") {worker.terminate(); resolve(data);} };
+    worker.onmessage = ({data}) => { if (data.type === "preliminary" || data.type === "error") {worker.terminate(); resolve(data);} };
     worker.postMessage({position,language:"both",custom:{da:"ODF\nZZZ",en:"ODF\nCAT"}});
   }), {position,workerPath});
-  expect(result.type).toBe("result"); expect(result.moves.length).toBeGreaterThan(0);
-  expect(result.moves.some((move: any) => move.words.length > 1)).toBe(true);
-  for (const move of result.moves) for (const word of move.words) {
+  expect(result.type).toBe("preliminary"); expect(result.pointsMoves.length).toBeGreaterThan(0);
+  expect(result.pointsMoves.some((move: any) => move.words.length > 1)).toBe(true);
+  for (const move of [...result.pointsMoves, ...result.strategyMoves]) for (const word of move.words) {
     expect(whitelist.has(word.word), word.word).toBe(true);
     expect(word.word).not.toBe("ODF");
   }
@@ -56,6 +56,6 @@ test("rejects altered dictionary data rather than suggesting unverified words", 
   await expect(page.locator(".move")).toHaveCount(0);
   // A retry fetches the verified source after discarding the corrupt cache entry.
   await page.getByRole("button", {name:"Find best moves"}).click();
-  await expect(page.getByRole("status")).toContainText("Search complete.");
+  await expect(page.getByRole("status")).toContainText("Search complete.", { timeout: 40000 });
   await expect(page.getByRole("alert")).toHaveCount(0);
 });

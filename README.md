@@ -8,6 +8,8 @@ Open the site in Safari, choose **Share → Add to Home Screen**. Import a full 
 
 Tap a board square or rack tile to correct recognition. **Adjust crop** lets you reposition the board and rack. **Settings** contains scoring presets, editable values, center bonuses, and bonus settings. **Help → Download for offline use** saves recognition assets and the official dictionary for offline imports and solving.
 
+**Strategy** recommends placements using points now, the remaining rack, sampled opponent replies, your next draw and following turn, and the risk of a large reply. **Highest score** retains exact immediate-score ranking. Results appear after the exhaustive legal search, then strategic estimates improve for up to 30 seconds. **Cancel** keeps the latest completed results. Both modes work offline and run on-device.
+
 Screenshots are processed on-device, never uploaded, and not persisted. Your latest position is saved in localStorage. Legacy imported dictionaries and language choices are ignored. Clearing browser data removes your saved position.
 
 ## Development
@@ -33,7 +35,11 @@ Moves must lie in one row or column without empty gaps. The first move covers th
 
 The first board has a double-word center by default; the second center has no bonus. Both bonus maps use horizontal/vertical reflection to restore covered squares. Visible screenshot tile values take precedence over the scoring preset; selecting a preset explicitly recalculates existing tile values. Editing the per-letter table affects newly entered tiles; existing tiles remain individually editable.
 
-"Best" means highest immediate score for the reviewed position, rules, and the RO whitelist. The solver exhaustively traverses a compact trie with cross-word constraints; results appear only after completion. The top 20 placements are shown. Cancel terminates the worker and discards unfinished results. No opponent prediction is included.
+**Highest score** means highest immediate score for the reviewed position, rules, and the RO whitelist. The solver exhaustively traverses a compact trie with cached cross-word constraints. **Strategy** compares up to 12 distinct candidates drawn from immediate-score, remaining-rack, and bonus-opening evaluations. It simulates an opponent reply and your following turn with the same hidden racks and draw sequences for every candidate. Only fully completed comparison rounds affect rankings.
+
+The strategic value is estimated net points across those turns plus final rack-quality difference, minus 25% of the opponent's 90th-percentile reply above their mean reply. Initial rack estimates reward retained blanks (+8), penalize extra copies of letters (-2), and penalize deviation from a 40% vowel balance (-1.5 per letter). These versioned heuristic weights are initial estimates, not a trained Danish leave table. Bonus exposure screens straight-line empty paths to nearby unused premiums; simulations evaluate actual legal replies. Fewer than eight completed scenarios is labelled limited analysis.
+
+The unseen pool uses the [official Danish Wordfeud distribution](https://wordfeud.com/wfweb/help/) of 104 tiles, subtracting board tiles and your rack. Played blanks remain physical blanks. Opponent racks are uniformly sampled without replacement, assuming seven tiles when available; future draws consume the remaining pool. The simulated opponent chooses points plus rack quality. Bag-empty simulations apply remaining-tile deductions and going-out transfers. With screenshot-only input, actual opponent letters, scores, exchanges, and playing style are unknown; these are approximate point-advantage estimates, not win probabilities or a proof of the strongest possible move. Only placements are recommended. Inconsistent physical tile counts disable strategy while keeping exact scoring available; correct the recognition to restore analysis.
 
 The source is Dansk Sprognaevn's [COR1 1.5.1.0](https://ordregister.dk/), corresponding to **Retskrivningsordbogen 5.1**. Use only column 5 (exact word form) where column 6 is **N** (normeret). Exclude U (unnormeret) and K (not explicitly normeret, including inferred noun genitives), and all COR2 extensions. No Hunspell expansion or inferred compounds are used.
 

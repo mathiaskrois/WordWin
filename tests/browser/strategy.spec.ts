@@ -1,0 +1,34 @@
+import { expect, test } from "@playwright/test";
+
+test("progressive strategy, exact-score comparison, stable selection and cancellation", async ({ page }) => {
+  await page.goto("/wordwin/");
+  await expect(page.getByRole("tab", { name: "Strategy", exact: true })).toHaveAttribute("aria-selected", "true");
+  await page.getByLabel("Rack letters", { exact: true }).fill("ENAGÆFN");
+  await page.getByRole("button", { name: "Find best moves" }).click();
+  await expect(page.locator(".move").first()).toBeVisible();
+  await expect(page.locator(".strategy-value").first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Why this move" })).toBeVisible();
+  await page.getByRole("tab", { name: "Highest score", exact: true }).click();
+  const scores = await page.locator(".move .score").allTextContents();
+  const values = scores.map(s => parseInt(s));
+  expect(values).toEqual(values.slice().sort((a, b) => b - a));
+  await page.locator(".move").first().click();
+  const coordinate = await page.locator('.move[aria-pressed="true"] .move-details small').first().textContent();
+  await page.getByRole("tab", { name: "Strategy", exact: true }).click();
+  await expect(page.locator('.move[aria-pressed="true"] .move-details small').first()).toHaveText(coordinate!);
+  await expect(page.locator(".strategy-status")).toContainText("simulated scenarios", { timeout: 20000 });
+  await expect(page.locator('.move[aria-pressed="true"] .move-details small').first()).toHaveText(coordinate!);
+  await expect(page.getByText("Opponent’s estimated reply", { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("Latest recommendations retained");
+  await expect(page.locator(".move").first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Find best moves" })).toBeEnabled();
+  await page.getByRole("tab", { name: "Highest score", exact: true }).click();
+  await page.reload();
+  await expect(page.getByRole("tab", { name: "Highest score", exact: true })).toHaveAttribute("aria-selected", "true");
+  await page.getByLabel("Rack letters", { exact: true }).fill("ÅÅÅAT");
+  await page.getByRole("button", { name: "Find best moves" }).click();
+  await expect(page.locator(".strategy-status")).toContainText("exceed the Danish Wordfeud distribution");
+  await expect(page.locator(".move").first()).toBeVisible();
+});

@@ -885,3 +885,32 @@ summary {
     animation: none;
   }
 }
+.result-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0;
+}
+.result-tabs button {
+  flex: 1;
+  padding: 10px 8px;
+  border: 1px solid #53647a;
+  border-radius: 8px;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+.result-tabs button[aria-selected="true"] {
+  background: #304764;
+  border-color: #b1c9e6;
+}
+.strategy-status {
+  font-size: 12px;
+  line-height: 1.6;
+  opacity: 0.8;
+}
+.move-details .strategy-value {
+  display: block;
+  margin-top: 4px;
+  white-space: normal;
+  color: inherit;
+}

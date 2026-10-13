@@ -8,14 +8,34 @@ import {
   rackFromText,
   tile,
   type Bonus,
-  type Move,
   type Position,
 } from "./model";
 import { detectBoard, type Crop } from "./vision";
 import { imageCanvas, recognize } from "./recognition";
 import { load, STORE } from "./storage";
+import { moveKey, type Analysis, type StrategicMove } from "./strategy";
+import type { SolverMessage } from "./solver.worker";
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
+}
+function recommendationReasons(move: StrategicMove, highest?: StrategicMove): string {
+  if (highest && move.score < highest.score) {
+    const a = move.strategy, b = highest.strategy;
+    const reasons: { benefit: number; text: string }[] = [
+      { benefit: a.rackQuality - b.rackQuality, text: "Keeps a more balanced, flexible rack." },
+      { benefit: b.exposure - a.exposure, text: "Opens fewer nearby bonus opportunities." },
+    ];
+    if (a.samples && b.samples) reasons.push(
+      { benefit: (b.opponentMean ?? 0) - (a.opponentMean ?? 0), text: "Allows a smaller estimated opponent reply." },
+      { benefit: (a.nextMean ?? 0) - (b.nextMean ?? 0), text: "Sets up a stronger estimated next turn." },
+      { benefit: (b.replyP90 ?? 0) - (a.replyP90 ?? 0), text: "Reduces the risk of a large opponent reply." },
+    );
+    const positive = reasons.filter(r => r.benefit > 0.1).sort((a, b) => b.benefit - a.benefit).slice(0, 2);
+    return `${highest.score - move.score} fewer points now than ${highest.word}. ${positive.map(r => r.text).join(" ") || "Compare the overall projected advantage and remaining letters."}`;
+  }
+  return move.strategy.samples
+    ? "Projected advantage combines points now, both following turns, final rack quality, and large-reply risk."
+    : "Initial estimate balances points, retained blanks, repeated letters, vowel balance, and nearby bonus openings.";
 }
 export default function App() {
   const saved = useRef(load()).current;
@@ -25,8 +45,10 @@ export default function App() {
   const [message, setMessage] = useState(""),
     [error, setError] = useState(""),
     [busy, setBusy] = useState<"import" | "solve" | null>(null);
-  const [moves, setMoves] = useState<Move[]>([]),
-    [selected, setSelected] = useState(0),
+  const [analysis, setAnalysis] = useState<Analysis | null>(null),
+    [resultsTab, setResultsTab] = useState(saved.resultsTab),
+    [selected, setSelected] = useState<string | null>(null),
+    [stopped, setStopped] = useState(false),
     [solved, setSolved] = useState(false),
     [summary, setSummary] = useState("");
   const [modal, setModal] = useState<"settings" | "crop" | "help" | null>(null),
@@ -66,12 +88,12 @@ export default function App() {
     try {
       localStorage.setItem(
         STORE,
-        JSON.stringify({ position, layout, profile }),
+        JSON.stringify({ position, layout, profile, resultsTab }),
       );
     } catch {
       /* Solving remains available when storage is full. */
     }
-  }, [position, layout, profile]);
+  }, [position, layout, profile, resultsTab]);
   useEffect(() => {
     if (modal || edit) dialog.current?.showModal();
     else dialog.current?.close();
@@ -83,7 +105,12 @@ export default function App() {
     [imageUrl],
   );
   function invalidate() {
-    setMoves([]);
+    job.current++;
+    worker.current?.terminate();
+    worker.current = null;
+    setAnalysis(null);
+    setSelected(null);
+    setStopped(false);
     setSolved(false);
     setSummary("");
     setError("");
@@ -94,9 +121,11 @@ export default function App() {
     worker.current = null;
     abort.current?.abort();
     setBusy(null);
-    setMessage("Cancelled. Review the position and try again.");
+    setStopped(!!analysis);
+    setMessage(analysis ? "Analysis stopped. Latest recommendations retained." : "Cancelled. Review the position and try again.");
   }
   async function scan(source: HTMLCanvasElement, manual?: Crop) {
+    invalidate();
     const id = ++job.current;
     abort.current?.abort();
     const controller = new AbortController();
@@ -104,7 +133,6 @@ export default function App() {
     setBusy("import");
     setError("");
     setMessage("Locating the board…");
-    invalidate();
     try {
       const result = await recognize(
         source,
@@ -141,7 +169,7 @@ export default function App() {
           `Screenshot could not be read: ${errorMessage(e)}. You can adjust the crop or enter tiles manually.`,
         );
     } finally {
-      if (id === job.current) setBusy(null);
+      if (id === job.current && !worker.current) setBusy(null);
     }
   }
   async function importFile(file?: File) {
@@ -250,7 +278,9 @@ export default function App() {
     }
     const id = ++job.current;
     setError("");
-    setMoves([]);
+    setAnalysis(null);
+    setSelected(null);
+    setStopped(false);
     setSolved(false);
     setBusy("solve");
     setMessage("Preparing the solver…");
@@ -259,33 +289,39 @@ export default function App() {
       type: "module",
     });
     worker.current = w;
-    w.onmessage = (e) => {
+    w.onmessage = (e: MessageEvent<SolverMessage>) => {
       if (id !== job.current) return;
       const result = e.data;
       if (result.type === "progress") setMessage(result.message);
-      else {
+      else if (result.type === "error") {
         setBusy(null);
+        setStopped(true);
         w.terminate();
         worker.current = null;
-        if (result.type === "error") setError(result.message);
-        else {
-          setMoves(result.moves);
-          setSelected(0);
-          setSolved(true);
+        setError(result.message);
+      } else {
+        setAnalysis(result);
+        setSolved(true);
+        // Follow the recommendation until the user selects a placement.
+        // Explicit selections remain stable as rankings improve.
+        setSummary(`${result.examined.toLocaleString()} valid placements checked · ${result.count.toLocaleString()} words`);
+        if (result.type === "result") {
+          setBusy(null);
+          w.terminate();
+          worker.current = null;
           setMessage("Search complete.");
-          setSummary(
-            `${result.examined.toLocaleString()} valid placements checked · ${result.count.toLocaleString()} words`,
-          );
-        }
+        } else setMessage(`Analyzing possible replies and your next turn… ${result.rounds} comparison rounds`);
       }
     };
     w.onerror = () => {
       if (id === job.current) {
         setBusy(null);
+        setStopped(true);
         setError(
           "The solver stopped unexpectedly. Reload the app and try again.",
         );
         w.terminate();
+        worker.current = null;
       }
     };
     w.postMessage({ position: nextPosition });
@@ -311,7 +347,13 @@ export default function App() {
       setDownloading(false);
     }
   }
-  const active = moves[selected];
+  const moves = resultsTab === "strategy" && analysis?.strategyMoves.length
+    ? analysis.strategyMoves : analysis?.pointsMoves ?? [];
+  const active = moves.find(m => moveKey(m) === selected) ?? moves[0];
+  const strategic = active && analysis?.strategyMoves.find(m => moveKey(m) === moveKey(active));
+  const highest = analysis?.pointsMoves[0];
+  const limited = !analysis?.rounds || analysis.rounds < 8;
+  const analysisLabel = busy === "solve" ? "Analyzing" : stopped ? `Analysis stopped${limited ? " · Limited analysis" : ""}` : limited ? "Limited analysis" : "Analysis complete";
   const overlay = new Map(active?.placed.map((p) => [p.index, p]) ?? []);
   const unknown = position.board.some((t) => t?.letter === "?");
   return (
@@ -337,7 +379,7 @@ export default function App() {
             <span className="live-dot" /> YOUR NEXT MOVE
           </div>
           <h1>Make every letter count.</h1>
-          <p>A screenshot. Your letters. Your highest-scoring move.</p>
+          <p>A screenshot. Your letters. Your strongest next move.</p>
         </section>
         <div className="workspace">
           <section
@@ -542,7 +584,7 @@ export default function App() {
                 Find best moves <span aria-hidden="true">→</span>
               </button>
               {busy && (
-                <div className="progress">
+                <div className="progress" role="status">
                   <span className="spinner" />
                   <span>{message}</span>
                   <button className="text-button" onClick={cancel}>
@@ -570,6 +612,17 @@ export default function App() {
                   <span className="result-count">{moves.length}</span>
                 )}
               </div>
+              <div className="result-tabs" role="tablist" aria-label="Move ranking">
+                <button role="tab" aria-selected={resultsTab === "strategy"} onClick={() => setResultsTab("strategy")}>Strategy</button>
+                <button role="tab" aria-selected={resultsTab === "points"} onClick={() => setResultsTab("points")}>Highest score</button>
+              </div>
+              {analysis && (
+                <p className="strategy-status">
+                  {analysis.warning ?? (resultsTab === "strategy"
+                    ? `${analysisLabel} · ${analysis.rounds ? `${analysis.rounds} simulated scenarios per move` : "Rack and board estimates"}. Estimates assume unknown opponent letters.`
+                    : "Exact points, ranked by immediate score.")}
+                </p>
+              )}
               {!solved ? (
                 <div className="empty-results">
                   <div className="mini-tiles" aria-hidden="true">
@@ -580,7 +633,7 @@ export default function App() {
                   <p>
                     Import your board or enter it by hand.
                     <br />
-                    We’ll find the strongest scoring placements.
+                    We’ll compare points, future turns, and possible opponent replies.
                   </p>
                 </div>
               ) : !moves.length ? (
@@ -597,9 +650,9 @@ export default function App() {
                     {moves.map((m, i) => (
                       <button
                         key={`${m.word}-${m.row}-${m.col}-${m.direction}-${i}`}
-                        aria-pressed={selected === i}
-                        className={`move ${selected === i ? "active" : ""}`}
-                        onClick={() => setSelected(i)}
+                        aria-pressed={active === m}
+                        className={`move ${active === m ? "active" : ""}`}
+                        onClick={() => setSelected(moveKey(m))}
                       >
                         <span className="rank">
                           {String(i + 1).padStart(2, "0")}
@@ -612,6 +665,9 @@ export default function App() {
                             {m.direction === "across" ? "→ Across" : "↓ Down"} ·{" "}
                             {m.placed.length} tiles
                           </small>
+                          {resultsTab === "strategy" && "strategy" in m && (
+                            <small className="strategy-value">{(m as StrategicMove).strategy.value.toFixed(1)} estimated advantage</small>
+                          )}
                         </span>
                         <span className="score">
                           {m.score}
@@ -622,6 +678,20 @@ export default function App() {
                   </div>
                   {active && (
                     <div className="breakdown">
+                      {resultsTab === "strategy" && strategic && (
+                        <>
+                          <h3>Why this move</h3>
+                          <p>Keep {strategic.strategy.leave || "no letters"} · {strategic.strategy.samples ? "Future turns simulated" : "Heuristic estimate"}</p>
+                          {strategic.strategy.opponentMean !== null && (
+                            <>
+                              <div><span>Opponent’s estimated reply</span><strong>{strategic.strategy.opponentMean.toFixed(1)} pts</strong></div>
+                              <div><span>Your estimated next turn</span><strong>{strategic.strategy.nextMean!.toFixed(1)} pts</strong></div>
+                              <div><span>Large reply risk (90th percentile)</span><strong>{strategic.strategy.replyP90!.toFixed(1)} pts</strong></div>
+                            </>
+                          )}
+                          <p>{recommendationReasons(strategic, highest && analysis?.strategyMoves.find(m => moveKey(m) === moveKey(highest)))}</p>
+                        </>
+                      )}
                       <h3>How it scores</h3>
                       {active.words.map((w, i) => (
                         <div key={i}>
@@ -991,10 +1061,20 @@ export default function App() {
               </p>
               <h3>What “best” means</h3>
               <p className="dialog-description">
-                The highest score among legal placements for your reviewed
-                position, scoring settings, and Retskrivningsordbogen 5.1. Search
-                completes before results appear. It does not predict your
-                opponent’s next move.
+                Highest score exhaustively ranks legal placements by exact points.
+                Strategy compares up to 12 candidates using remaining letters,
+                possible opponent replies, your next draw, and your following turn.
+                It analyzes for up to 30 seconds after the exact search; you can
+                stop early and keep completed results.
+              </p>
+              <p className="dialog-description">
+                Strategy uses the Danish Wordfeud tile distribution and assumes
+                unknown opponent letters are drawn randomly from unseen tiles.
+                It favors expected point advantage with a moderate penalty for
+                large replies. Estimates do not predict a guaranteed outcome or
+                your chance of winning. Fewer than eight scenarios is limited
+                analysis. Only word placements are recommended; screenshots and
+                analysis stay on your device.
               </p>
             </>
           )}

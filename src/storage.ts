@@ -5,12 +5,14 @@ export interface Saved {
   position: Position;
   layout: "classic" | "alternate";
   profile: "da" | "en";
+  resultsTab: "strategy" | "points";
 }
 export function load(): Saved {
   const fallback: Saved = {
     position: initialPosition(),
     layout: "classic",
     profile: "da",
+    resultsTab: "strategy",
   };
   try {
     const data = JSON.parse(localStorage.getItem(STORE) || "null");
@@ -24,7 +26,7 @@ export function load(): Saved {
       data.position.rack.length <= 7 &&
       data.position.rules?.values
     )
-      return { position: data.position, layout: data.layout === "alternate" ? "alternate" : "classic", profile: data.profile === "en" ? "en" : "da" };
+      return { position: data.position, layout: data.layout === "alternate" ? "alternate" : "classic", profile: data.profile === "en" ? "en" : "da", resultsTab: data.resultsTab === "points" ? "points" : "strategy" };
   } catch {}
   return fallback;
 }

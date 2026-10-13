@@ -20,7 +20,7 @@ describe("official RO-only word forms", () => {
   it("preserves the saved board and rack while discarding old language/custom overrides", () => {
     const position = initialPosition(); position.rack = rackFromText("HEST", position.rules.values);
     vi.stubGlobal("localStorage", { getItem: (key: string) => key === STORE ? JSON.stringify({position, language:"both", custom:{da:"ZZZ"}, layout:"alternate",profile:"da"}) : null });
-    expect(load()).toEqual({position,layout:"alternate",profile:"da"});
+    expect(load()).toEqual({position,layout:"alternate",profile:"da",resultsTab:"strategy"});
     expect(load()).not.toHaveProperty("language");
     expect(load()).not.toHaveProperty("custom");
   });
