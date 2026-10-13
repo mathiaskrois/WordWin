@@ -43,7 +43,11 @@ test("automatically solves imported screenshots with both bonus layouts", async 
           ctx.fillStyle = "#201e1b";
           ctx.font = "32px Arial";
           // Å's ring can sit near the tile's upper edge in game screenshots.
-          ctx.fillText(t.l, x + 7, y + (t.l === "Å" ? 29 : 40));
+          // Use font metrics so the ring stays inside the tile on every OS.
+          const baseline = t.l === "Å"
+            ? ctx.measureText(t.l).actualBoundingBoxAscent + 3
+            : 40;
+          ctx.fillText(t.l, x + 7, y + baseline);
           ctx.font = "bold 12px Arial";
           ctx.fillText(String(t.points), x + 38, y + 15);
         }
@@ -56,7 +60,10 @@ test("automatically solves imported screenshots with both bonus layouts", async 
           ctx.fillRect(x, y, 96, 96);
           ctx.fillStyle = "#201e1b";
           ctx.font = "65px Arial";
-          ctx.fillText(rack[i], x + 12, y + (rack[i] === "Å" ? 59 : 78));
+          const baseline = rack[i] === "Å"
+            ? ctx.measureText(rack[i]).actualBoundingBoxAscent + 3
+            : 78;
+          ctx.fillText(rack[i], x + 12, y + baseline);
           ctx.font = "bold 22px Arial";
           ctx.fillText(String(values[rack[i]]), x + 77, y + 27);
         }
