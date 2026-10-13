@@ -31,6 +31,8 @@ test("automatically solves imported screenshots with both bonus layouts", async 
                 { i: 111, l: "Æ", points: 8 },
                 { i: 112, l: "Ø", points: 4 },
                 { i: 113, l: "I", points: 1 },
+                { i: 114, l: "Å", points: 4 },
+                { i: 115, l: "A", points: 1 },
               ]
             : [];
         for (const t of boardTiles) {
@@ -40,11 +42,12 @@ test("automatically solves imported screenshots with both bonus layouts", async 
           ctx.fillRect(x + 2, y + 2, 46, 46);
           ctx.fillStyle = "#201e1b";
           ctx.font = "32px Arial";
-          ctx.fillText(t.l, x + 7, y + 40);
+          // Å's ring can sit near the tile's upper edge in game screenshots.
+          ctx.fillText(t.l, x + 7, y + (t.l === "Å" ? 29 : 40));
           ctx.font = "bold 12px Arial";
           ctx.fillText(String(t.points), x + 38, y + 15);
         }
-        const rack = "ENAGÆFN";
+        const rack = "ENÅGÆFA";
         const step = 103;
         for (let i = 0; i < 7; i++) {
           const x = 15 + i * step,
@@ -53,7 +56,7 @@ test("automatically solves imported screenshots with both bonus layouts", async 
           ctx.fillRect(x, y, 96, 96);
           ctx.fillStyle = "#201e1b";
           ctx.font = "65px Arial";
-          ctx.fillText(rack[i], x + 12, y + 78);
+          ctx.fillText(rack[i], x + 12, y + (rack[i] === "Å" ? 59 : 78));
           ctx.font = "bold 22px Arial";
           ctx.fillText(String(values[rack[i]]), x + 77, y + 27);
         }
@@ -72,7 +75,7 @@ test("automatically solves imported screenshots with both bonus layouts", async 
       timeout: 90000,
     });
     await expect(page.getByLabel("Rack letters", { exact: true })).toHaveValue(
-      "ENAGÆFN",
+      "ENÅGÆFA",
     );
     await expect(
       page.getByRole("button", {
@@ -96,6 +99,18 @@ test("automatically solves imported screenshots with both bonus layouts", async 
       await expect(
         page.getByRole("button", {
           name: "Row 8 column I: I, 1 points",
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("button", {
+          name: "Row 8 column J: Å, 4 points",
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("button", {
+          name: "Row 8 column K: A, 1 points",
           exact: true,
         }),
       ).toBeVisible();

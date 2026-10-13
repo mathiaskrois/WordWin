@@ -51,9 +51,11 @@ export function glyph(
   ctx.drawImage(
     source,
     x + w * (digit ? 0.67 : 0.06),
-    y + h * (digit ? 0.02 : 0.12),
+    // Å's ring can sit above the main letter. Include the tile's upper area
+    // before removing detached point digits below.
+    y + h * (digit ? 0.02 : 0.04),
     w * (digit ? 0.29 : 0.86),
-    h * (digit ? 0.4 : 0.8),
+    h * (digit ? 0.4 : 0.88),
     20,
     20,
     120,
