@@ -30,8 +30,10 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
   if (
     event.request.method !== "GET" ||
+    event.request.headers.has("authorization") ||
     url.origin !== self.location.origin ||
-    !url.pathname.startsWith(BASE)
+    !url.pathname.startsWith(BASE) ||
+    url.pathname.startsWith(BASE + "api/")
   )
     return;
   event.respondWith(
@@ -41,10 +43,12 @@ self.addEventListener("fetch", (event) => {
       if (event.request.mode === "navigate") {
         try {
           const response = await fetch(event.request);
-          if (response.ok) await cache.put(BASE, response.clone());
+          if (response.ok && (url.pathname === BASE || url.pathname === BASE + "index.html"))
+            await cache.put(BASE, response.clone());
           return response;
         } catch {
           return (
+            (url.pathname.replace(/\/$/, "") === BASE + "users" && await cache.match(BASE + "users/index.html", { ignoreVary: true })) ||
             (await cache.match(BASE, { ignoreVary: true })) ||
             (await cache.match(BASE + "index.html", { ignoreVary: true })) ||
             Response.error()

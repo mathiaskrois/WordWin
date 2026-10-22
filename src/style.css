@@ -914,3 +914,20 @@ summary {
   white-space: normal;
   color: inherit;
 }
+
+.users-page main { max-width: 1000px; }
+.users-page p { color: var(--muted); line-height: 1.6; }
+.users-login { display: grid; gap: 16px; max-width: 360px; }
+.users-login label { display: grid; gap: 8px; }
+.users-login input { min-width: 0; padding: 12px; color: inherit; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
+.users-actions { display: flex; gap: 12px; margin: 20px 0; }
+.users-page button { padding: 10px 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
+.users-table { overflow-x: auto; margin: 20px 0; }
+.users-table table { border-collapse: collapse; width: 100%; text-align: left; white-space: nowrap; }
+.users-table th, .users-table td { padding: 12px; border-bottom: 1px solid var(--line); }
+.users-page .user-id { overflow-wrap: anywhere; }
+.user-event { border-top: 1px solid var(--line); padding: 18px 0; }
+.logged-board { display: grid; grid-template-columns: repeat(15, minmax(0, 1fr)); gap: 2px; max-width: 480px; }
+.logged-board span { display: grid; place-items: center; aspect-ratio: 1; background: var(--panel); color: var(--muted); font-size: clamp(8px, 2vw, 14px); }
+.logged-board .occupied { background: #e4b45e; color: #101a29; font-weight: bold; }
+.users-page [role="alert"] { color: #ffb3aa; }

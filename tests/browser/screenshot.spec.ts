@@ -1,8 +1,20 @@
 import { test, expect } from "@playwright/test";
 import { bonusesFor, DA_VALUES } from "../../src/model";
+import type { ActivityEvent } from "../../src/activity";
+const emailMode = process.env.WORDWIN_TEST_EMAIL === "1";
+if (emailMode) test.use({ serviceWorkers: "block" });
 test("automatically solves imported screenshots with both bonus layouts", async ({
   page,
 }) => {
+  const notifications: ActivityEvent[] = [];
+  const prompts: string[] = [];
+  if (emailMode) {
+    page.on("dialog", dialog => { prompts.push(dialog.message()); void dialog.dismiss(); });
+    await page.route("https://script.google.com/macros/s/**/exec", route => {
+      notifications.push(route.request().postDataJSON());
+      return route.fulfill({ status: 200, contentType: "text/plain", body: "ok" });
+    });
+  }
   await page.goto("/wordwin/");
   for (const layout of ["classic", "alternate"] as const) {
     const png = await page.evaluate(
@@ -90,6 +102,16 @@ test("automatically solves imported screenshots with both bonus layouts", async 
         exact: true,
       }),
     ).toHaveAttribute("aria-pressed", "true");
+    if (emailMode) {
+      await expect.poll(() => notifications.length).toBe(layout === "classic" ? 1 : 2);
+      const sent = notifications.at(-1)!;
+      expect(sent.kind).toBe("board_import");
+      expect(sent.position!.board).toHaveLength(225);
+      expect(sent.position!.rack.map(t => t.letter).join("")).toBe("ENÅGÆFA");
+      expect(JSON.stringify(sent)).not.toMatch(/data:image|generated-board\.png|base64/);
+      expect(prompts).toEqual([]);
+      expect(page.context().pages()).toHaveLength(1);
+    }
     if (layout === "alternate") {
       await expect(
         page.getByRole("button", {

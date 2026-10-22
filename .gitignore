@@ -8,3 +8,6 @@ playwright-report/
 .local/
 *.tsbuildinfo
 .env*
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal

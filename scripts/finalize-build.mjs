@@ -1,9 +1,13 @@
-import { readdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
+await mkdir("dist/users", { recursive: true });
+const usersHtml = (await readFile("dist/index.html", "utf8")).replace("<head>", '<head><meta name="robots" content="noindex, nofollow">');
+await writeFile("dist/users/index.html", usersHtml);
 const assets = await readdir("dist/assets");
 const paths = [
   "",
   "index.html",
+  "users/index.html",
   "icon.svg",
   "apple-touch-icon.png",
   "icon-192.png",

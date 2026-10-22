@@ -13,6 +13,7 @@ import {
 import { detectBoard, type Crop } from "./vision";
 import { imageCanvas, recognize } from "./recognition";
 import { load, STORE } from "./storage";
+import { EMAIL_NOTIFICATIONS, recordActivity } from "./activity";
 import { moveKey, type Analysis, type StrategicMove } from "./strategy";
 import type { SolverMessage } from "./solver.worker";
 function errorMessage(error: unknown) {
@@ -73,12 +74,6 @@ export default function App() {
     dialog = useRef<HTMLDialogElement>(null),
     upload = useRef<HTMLInputElement>(null);
   useEffect(() => {
-    if ("serviceWorker" in navigator)
-      navigator.serviceWorker
-        .register(`${import.meta.env.BASE_URL}sw.js`, {
-          scope: import.meta.env.BASE_URL,
-        })
-        .catch(() => {});
     return () => {
       worker.current?.terminate();
       abort.current?.abort();
@@ -150,6 +145,7 @@ export default function App() {
         bonuses: result.bonuses,
         rules: { ...position.rules, center: result.bonuses[112] },
       };
+      recordActivity(manual ? "board_rescan" : "board_import", nextPosition);
       setPosition(nextPosition);
       setLayout(result.layout);
       setCrop(result.crop);
@@ -164,6 +160,7 @@ export default function App() {
         );
       else findMoves(nextPosition);
     } catch (e) {
+      if (id === job.current && !controller.signal.aborted) recordActivity("import_failed");
       if (id === job.current)
         setError(
           `Screenshot could not be read: ${errorMessage(e)}. You can adjust the crop or enter tiles manually.`,
@@ -186,6 +183,7 @@ export default function App() {
       setCrop(found.crop);
       await scan(source);
     } catch (e) {
+      recordActivity("import_failed");
       setError(
         `Unable to open this image: ${errorMessage(e)}. Use a PNG or JPEG screenshot.`,
       );
@@ -276,6 +274,7 @@ export default function App() {
       );
       return;
     }
+    recordActivity("solve", nextPosition);
     const id = ++job.current;
     setError("");
     setAnalysis(null);
@@ -1074,7 +1073,9 @@ export default function App() {
                 large replies. Estimates do not predict a guaranteed outcome or
                 your chance of winning. Fewer than eight scenarios is limited
                 analysis. Only word placements are recommended; screenshots and
-                analysis stay on your device.
+                analysis stay on your device. {EMAIL_NOTIFICATIONS
+                  ? "Each imported board sends the app owner an email containing an anonymous browser ID, import time, and board representation with rack letters, tile values and bonuses."
+                  : "Anonymous usage logs record app visits, imports, and calculations, including board letters, tile values, bonuses, and rack letters."} Screenshot images are never sent or stored.
               </p>
             </>
           )}
