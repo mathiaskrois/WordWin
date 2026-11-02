@@ -1,4 +1,12 @@
-export type Bonus = "" | "DL" | "TL" | "DW" | "TW";
+export type Bonus = "" | "DL" | "TL" | "DW" | "TW" | "4L" | "5L" | "4W" | "5W";
+export type Layout = "classic" | "alternate" | "custom";
+export const BONUSES: Bonus[] = ["", "DL", "TL", "DW", "TW", "4L", "5L", "4W", "5W"];
+export function letterMultiplier(b: Bonus): number {
+  return b === "DL" ? 2 : b === "TL" ? 3 : b === "4L" ? 4 : b === "5L" ? 5 : 1;
+}
+export function wordMultiplier(b: Bonus): number {
+  return b === "DW" ? 2 : b === "TW" ? 3 : b === "4W" ? 4 : b === "5W" ? 5 : 1;
+}
 export interface Tile {
   letter: string;
   value: number;
@@ -118,15 +126,15 @@ export const ALTERNATE = mapFromQuarter([
   ".T......",
 ]);
 export function bonusesFor(
-  layout: "classic" | "alternate",
+  layout: Layout,
   center?: Bonus,
 ): Bonus[] {
-  const b = [...(layout === "classic" ? CLASSIC : ALTERNATE)];
+  const b: Bonus[] = layout === "custom" ? Array(225).fill("") : [...(layout === "classic" ? CLASSIC : ALTERNATE)];
   b[112] = center ?? (layout === "classic" ? "DW" : "");
   return b;
 }
 export function initialPosition(
-  layout: "classic" | "alternate" = "classic",
+  layout: Layout = "classic",
 ): Position {
   const center = layout === "classic" ? "DW" : "";
   return {

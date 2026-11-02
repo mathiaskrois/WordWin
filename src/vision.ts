@@ -1,4 +1,4 @@
-import { bonusesFor, type Bonus } from "./model";
+import { bonusesFor, type Bonus, type Layout } from "./model";
 export interface Crop {
   x: number;
   y: number;
@@ -7,7 +7,7 @@ export interface Crop {
   rackX: number;
   rackWidth: number;
 }
-export type Layout = "classic" | "alternate";
+export type { Layout } from "./model";
 export interface Pixels {
   width: number;
   height: number;
@@ -29,6 +29,10 @@ export function classify([r, g, b]: number[]):
     Math.max(r, g, b) - Math.min(r, g, b) < 85
   )
     return "tile";
+  if (r > 115 && r < 190 && g < 100 && b > 150) return "5W";
+  if (r > 130 && g < 115 && b > 115) return "4W";
+  if (r < 100 && g > 95 && g > b * 1.35 && g > r * 1.3) return "5L";
+  if (r < 75 && g > 90 && b > 80 && g > b * 0.85) return "4L";
   if (r > 150 && g > 95 && g < 185 && b < 115) return "DW";
   if (r > 145 && g < 120 && b < 125) return "TW";
   if (b > 155 && g > 100 && r < 130) return "DL";
@@ -41,54 +45,28 @@ export function detectBoard(image: Pixels): {
   layout: Layout;
   confidence: number;
 } {
-  // Search both known bonus templates. Occupied cells are ignored in this fit.
-  let best = {
-    score: -Infinity,
-    y: 0,
-    x: 0,
-    size: image.width,
-    layout: "classic" as Layout,
-  };
+  // Locate the grid by cell interiors and repeated gaps, independent of bonuses.
+  let best = { score: -Infinity, y: 0, x: 0, size: image.width };
   const sizes = [1, 0.96, 0.92, 0.86].map((f) => image.width * f);
   for (const size of sizes) {
-    const x = (image.width - size) / 2,
-      step = size / 15;
-    for (
-      let y = Math.round(image.height * 0.16);
+    const x = (image.width - size) / 2, step = size / 15;
+    for (let y = Math.round(image.height * 0.16);
       y + size < image.height * 0.88;
-      y += Math.max(2, Math.round(image.width / 350))
-    ) {
-      for (const layout of ["classic", "alternate"] as const) {
-        const bonuses = bonusesFor(layout);
-        let score = 0;
-        for (let r = 0; r < 15; r++)
-          for (let c = 0; c < 15; c++) {
-            const actual = classify(
-              pixel(image, x + (c + 0.26) * step, y + (r + 0.26) * step),
-            );
-            if (actual === "tile") continue;
-            const expected = bonuses[r * 15 + c] || "plain";
-            score +=
-              actual === expected
-                ? expected === "plain"
-                  ? 1
-                  : 5
-                : actual === "other"
-                  ? -1
-                  : expected === "plain"
-                    ? -2
-                    : -4;
-            // Reward visible vertical/horizontal seams; this resolves fits within a cell.
-            if (
-              c < 14 &&
-              classify(
-                pixel(image, x + (c + 0.995) * step, y + (r + 0.5) * step),
-              ) === "plain"
-            )
-              score -= 0.08;
+      y += Math.max(2, Math.round(image.width / 350))) {
+      let score = 0;
+      for (let r = 0; r < 15; r++)
+        for (let c = 0; c < 15; c++) {
+          const inside = pixel(image, x + (c + 0.26) * step, y + (r + 0.26) * step);
+          const actual = classify(inside);
+          score += actual === "other" ? -3 : 1;
+          // Grid gaps are darker than both ordinary squares and premiums.
+          for (const [dx, dy] of [[0.995, 0.5], [0.5, 0.995]]) {
+            const gap = pixel(image, x + (c + dx) * step, y + (r + dy) * step);
+            const contrast = inside.reduce((sum, value, i) => sum + value - gap[i], 0);
+            score += Math.max(-1, Math.min(1, contrast / 40));
           }
-        if (score > best.score) best = { score, y, x, size, layout };
-      }
+        }
+      if (score > best.score) best = { score, y, x, size };
     }
   }
   const step = best.size / 15;
@@ -156,9 +134,10 @@ export function detectBoard(image: Pixels): {
     rackX = runs[0].start;
     rackWidth = ((runs[6].start - runs[0].start) / 6) * 7;
   }
+  const crop = { x: best.x, y: refinedY, size: best.size, rackY, rackX, rackWidth };
   return {
-    crop: { x: best.x, y: refinedY, size: best.size, rackY, rackX, rackWidth },
-    layout: best.layout,
+    crop,
+    layout: readBonuses(image, crop).layout,
     confidence: Math.max(0, Math.min(1, best.score / 450)),
   };
 }
@@ -174,4 +153,36 @@ export function occupied(
       if (classify(pixel(image, x + size * dx, y + size * dy)) === "tile")
         count++;
   return count >= 4;
+}
+
+/** Read each square independently; covered squares are irrelevant to future scoring. */
+export function readBonuses(image: Pixels, crop: Crop): { bonuses: Bonus[]; layout: Layout } {
+  const step = crop.size / 15;
+  const visible = Array.from({ length: 225 }, (_, i) => {
+    const votes = new Map<ReturnType<typeof classify>, number>();
+    for (const dx of [0.2, 0.75])
+      for (const dy of [0.2, 0.75]) {
+        const kind = classify(pixel(image, crop.x + (i % 15 + dx) * step,
+          crop.y + (Math.floor(i / 15) + dy) * step));
+        votes.set(kind, (votes.get(kind) ?? 0) + 1);
+      }
+    return [...votes].sort((a, b) => b[1] - a[1])[0][0];
+  });
+  for (const layout of ["classic", "alternate"] as const) {
+    const template = bonusesFor(layout);
+    let checked = 0, matches = 0;
+    visible.forEach((kind, i) => {
+      if (kind === "tile" || kind === "other") return;
+      checked++;
+      if ((kind === "plain" ? "" : kind) === template[i]) matches++;
+    });
+    if (checked >= 20 && matches / checked >= 0.97) return {
+      layout, bonuses: template.map((bonus, i) => {
+        const kind = visible[i];
+        return kind === "tile" || kind === "other" ? bonus : kind === "plain" ? "" : kind;
+      }),
+    };
+  }
+  return { layout: "custom", bonuses: visible.map(kind =>
+    kind === "tile" || kind === "plain" || kind === "other" ? "" : kind) };
 }

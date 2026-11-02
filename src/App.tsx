@@ -8,6 +8,8 @@ import {
   rackFromText,
   tile,
   type Bonus,
+  type Layout,
+  BONUSES,
   type Position,
 } from "./model";
 import { detectBoard, type Crop } from "./vision";
@@ -189,7 +191,7 @@ export default function App() {
       );
     }
   }
-  function changeLayout(next: "classic" | "alternate") {
+  function changeLayout(next: Layout) {
     setLayout(next);
     invalidate();
     const center = next === "classic" ? "DW" : "";
@@ -416,14 +418,14 @@ export default function App() {
             </div>
             <div className="board-toolbar">
               <div className="segmented" aria-label="Board layout">
-                {(["classic", "alternate"] as const).map((l, i) => (
+                {(["classic", "alternate", "custom"] as const).map((l, i) => (
                   <button
                     key={l}
                     disabled={!!busy}
                     aria-pressed={layout === l}
                     onClick={() => changeLayout(l)}
                   >
-                    Board {i + 1}
+                    {l === "custom" ? "Custom" : `Board ${i + 1}`}
                   </button>
                 ))}
               </div>
@@ -485,6 +487,9 @@ export default function App() {
               <span>
                 <i className="TW" /> Triple word
               </span>
+              {(["4L", "5L", "4W", "5W"] as const).map(b => (
+                <span key={b}><i className={b} /> {b[0]}× {b[1] === "L" ? "letter" : "word"}</span>
+              ))}
             </div>
             <div className="rack-heading">
               <h2>Your rack</h2>
@@ -820,7 +825,7 @@ export default function App() {
                     value={editBonus}
                     onChange={(e) => setEditBonus(e.target.value as Bonus)}
                   >
-                    {["", "DL", "TL", "DW", "TW"].map((b) => (
+                    {BONUSES.map((b) => (
                       <option key={b} value={b}>
                         {b || "None"}
                       </option>
@@ -893,7 +898,7 @@ export default function App() {
                       invalidate();
                     }}
                   >
-                    {["", "DL", "TL", "DW", "TW"].map((b) => (
+                    {BONUSES.map((b) => (
                       <option value={b} key={b}>
                         {b || "No bonus"}
                       </option>

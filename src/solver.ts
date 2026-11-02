@@ -1,5 +1,7 @@
 import {
   ALPHABET,
+  letterMultiplier,
+  wordMultiplier,
   type Board,
   type Move,
   type Placement,
@@ -167,9 +169,8 @@ export function scoreMove(
       multiplier = 1;
     for (const i of l.indices) {
       const b = used.has(i) ? position.bonuses[i] : "";
-      points += board[i]!.value * (b === "DL" ? 2 : b === "TL" ? 3 : 1);
-      if (b === "DW") multiplier *= 2;
-      if (b === "TW") multiplier *= 3;
+      points += board[i]!.value * letterMultiplier(b);
+      multiplier *= wordMultiplier(b);
     }
     return { word: l.text, points: points * multiplier };
   });

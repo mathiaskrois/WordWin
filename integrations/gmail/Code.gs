@@ -74,7 +74,7 @@ function tile_(tile) {
 }
 function validBoardEvent_(event) {
   const id = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  const bonuses = ["", "DL", "TL", "DW", "TW"];
+  const bonuses = ["", "DL", "TL", "DW", "TW", "4L", "5L", "4W", "5W"];
   if (!object_(event, ["id", "userId", "sessionId", "at", "kind", "position"]) || event.kind !== "board_import" ||
     !id.test(event.id) || !id.test(event.userId) || !id.test(event.sessionId) || typeof event.at !== "string" ||
     !/^\d{4}-\d{2}-\d{2}T/.test(event.at) || !Number.isFinite(Date.parse(event.at)) || Date.parse(event.at) > Date.now() + 86400000) return false;

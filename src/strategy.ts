@@ -88,7 +88,7 @@ export function applyMove(board: Board, move: Move): Board {
 // of a new tile. Actual reply legality and scores are evaluated in rollouts.
 export function premiumExposure(position: Position, move: Move): number {
   const board = applyMove(position.board, move), seen = new Map<number, number>();
-  const weights = { "": 0, DL: 1, TL: 2, DW: 4, TW: 8 };
+  const weights = { "": 0, DL: 1, TL: 2, DW: 4, TW: 8, "4L": 3, "5L": 4, "4W": 12, "5W": 16 };
   for (const p of move.placed)
     for (const delta of [-15, 15, -1, 1])
       for (let distance = 1; distance <= 7; distance++) {

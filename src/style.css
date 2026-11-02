@@ -931,3 +931,8 @@ summary {
 .logged-board span { display: grid; place-items: center; aspect-ratio: 1; background: var(--panel); color: var(--muted); font-size: clamp(8px, 2vw, 14px); }
 .logged-board .occupied { background: #e4b45e; color: #101a29; font-weight: bold; }
 .users-page [role="alert"] { color: #ffb3aa; }
+
+.square.\34 L, .legend .\34 L { background: #167d78; }
+.square.\35 L, .legend .\35 L { background: #3b8934; }
+.square.\34 W, .legend .\34 W { background: #a44591; }
+.square.\35 W, .legend .\35 W { background: #793cc0; }

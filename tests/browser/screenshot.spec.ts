@@ -146,3 +146,20 @@ test("automatically solves imported screenshots with both bonus layouts", async 
     }
   }
 });
+
+test("imports an asymmetric board with 4× and 5× bonuses", async ({ page }) => {
+  await page.goto("/wordwin/");
+  await page.getByLabel("Choose board screenshot").setInputFiles(process.env.WORDWIN_SCREENSHOT || "tests/fixtures/asymmetric-board.png");
+  await expect(page.getByRole("status")).toContainText("Search complete.", { timeout: 90000 });
+  await expect(page.getByRole("button", { name: "Custom", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByLabel("Rack letters", { exact: true })).toHaveValue("ØEEGKMY");
+  for (const [column, letter, points] of [["E", "F", 3], ["F", "Ø", 4], ["G", "D", 2], ["H", "E", 1]]) {
+    await expect(page.getByRole("button", { name: `Row 8 column ${column}: ${letter}, ${points} points`, exact: true })).toBeVisible();
+  }
+  for (const [row, column, bonus] of [[1, "J", "4L"], [4, "N", "5L"], [2, "H", "4W"], [6, "F", "5W"], [14, "O", "5W"]]) {
+    await expect(page.getByRole("button", { name: `Row ${row} column ${column}: ${bonus}`, exact: true })).toBeVisible();
+  }
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Custom", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "Row 14 column O: 5W", exact: true })).toBeVisible();
+});

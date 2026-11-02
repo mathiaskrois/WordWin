@@ -1,5 +1,5 @@
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const bonuses = new Set(["", "DL", "TL", "DW", "TW"]);
+const bonuses = new Set(["", "DL", "TL", "DW", "TW", "4L", "5L", "4W", "5W"]);
 const kinds = new Set(["open", "resume", "board_import", "board_rescan", "import_failed", "solve"]);
 function keys(value, allowed) {
   return !!value && typeof value === "object" && !Array.isArray(value) && Object.keys(value).every(key => allowed.includes(key));

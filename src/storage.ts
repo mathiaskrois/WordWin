@@ -1,9 +1,9 @@
-import type { Position } from "./model";
+import type { Position, Layout } from "./model";
 import { initialPosition } from "./model";
 export const STORE = "wordwin-v1";
 export interface Saved {
   position: Position;
-  layout: "classic" | "alternate";
+  layout: Layout;
   profile: "da" | "en";
   resultsTab: "strategy" | "points";
 }
@@ -26,7 +26,7 @@ export function load(): Saved {
       data.position.rack.length <= 7 &&
       data.position.rules?.values
     )
-      return { position: data.position, layout: data.layout === "alternate" ? "alternate" : "classic", profile: data.profile === "en" ? "en" : "da", resultsTab: data.resultsTab === "points" ? "points" : "strategy" };
+      return { position: data.position, layout: data.layout === "custom" ? "custom" : data.layout === "alternate" ? "alternate" : "classic", profile: data.profile === "en" ? "en" : "da", resultsTab: data.resultsTab === "points" ? "points" : "strategy" };
   } catch {}
   return fallback;
 }

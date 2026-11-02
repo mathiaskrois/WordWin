@@ -1,9 +1,8 @@
 import { createWorker, PSM } from "tesseract.js";
-import { detectBoard, occupied, pixel, type Crop, type Layout } from "./vision";
+import { detectBoard, occupied, readBonuses, type Crop, type Layout } from "./vision";
 import {
   ALPHABET,
   DA_VALUES,
-  bonusesFor,
   emptyBoard,
   type Board,
   type Tile,
@@ -290,15 +289,12 @@ export async function recognize(
         if (uncertainTile) uncertain.push(cell.index);
       }
     }
-    const bonuses = bonusesFor(fit.layout);
-    // Read visible bonuses, but preserve template values underneath occupied tiles.
-    // Center remains the layout's preset, and can be explicitly edited in the UI.
-    void pixel;
+    const { bonuses, layout } = readBonuses(pixels, crop);
     return {
       board,
       rack,
       bonuses,
-      layout: fit.layout,
+      layout,
       crop,
       uncertain,
       rackUncertain,
